@@ -1,0 +1,814 @@
+
+==== Related websites
+
+https://sdk.operatorframework.io/docs/building-operators/golang/quickstart/
+https://sdk.operatorframework.io/docs/building-operators/golang/tutorial/
+https://sdk.operatorframework.io/docs/building-operators/golang/references/client/
+
+https://www.youtube.com/watch?v=1iJKDbQzL-k      # Introducing Operator-SDK 1.0
+https://www.youtube.com/watch?v=pTbuHoMp68s      # Tutorial: Introduction to Kubernetes Operators and the Operator Framework
+
+http://workshop.coreostrain.me/support/
+https://www.redhat.com/en/resources/oreilly-kubernetes-operators-automation-ebook
+https://www.redhat.com/cms/managed-files/cm-oreilly-kubernetes-patterns-ebook-f19824-201910-en.pdf
+
+https://book.kubebuilder.io/introduction.html
+https://book.kubebuilder.io/reference/markers/crd-validation.html
+
+
+==== Prerequisites
+
+- git
+
+- go version 1.15
+$ wget -c https://golang.org/dl/go1.15.12.linux-amd64.tar.gz -O - | sudo tar -xz -C /usr/local
+$ export PATH=$PATH:/usr/local/go/bin
+$ go version
+go version go1.15.12 linux/amd64
+
+- docker version 17.03+.
+
+- kubectl and access to a Kubernetes cluster of a compatible version.
+
+==== Install from GitHub
+
+# Download the release binary
+export ARCH=$(case $(uname -m) in x86_64) echo -n amd64 ;; aarch64) echo -n arm64 ;; *) echo -n $(uname -m) ;; esac)
+export OS=$(uname | awk '{print tolower($0)}')
+export OPERATOR_SDK_DL_URL=https://github.com/operator-framework/operator-sdk/releases/download/v1.7.2
+curl -LO ${OPERATOR_SDK_DL_URL}/operator-sdk_${OS}_${ARCH}
+
+# Verify the downloaded binary
+gpg --keyserver keyserver.ubuntu.com --recv-keys 052996E2A20B5C7E     # Import the operator-sdk release GPG key from keyserver.ubuntu.com
+curl -LO ${OPERATOR_SDK_DL_URL}/checksums.txt
+curl -LO ${OPERATOR_SDK_DL_URL}/checksums.txt.asc
+gpg -u "Operator SDK (release) <cncf-operator-sdk@cncf.io>" --verify checksums.txt.asc
+grep operator-sdk_${OS}_${ARCH} checksums.txt | sha256sum -c -        # Make sure the checksums match
+
+# Install the release binary in your PATH
+chmod +x operator-sdk_${OS}_${ARCH} && sudo mv operator-sdk_${OS}_${ARCH} /usr/local/bin/operator-sdk
+
+# Create a project directory for your project and initialize the project
+mkdir memcached-operator
+cd memcached-operator
+git init
+operator-sdk init --domain example.com --repo github.com/example/memcached-operator
+  // all API groups will be <group>.example.com
+  // operator-sdk init generates a go.mod file to be used with Go modules. The --repo=<path> flag is required when creating a project outside
+  // of $GOPATH/src, as scaffolded files require a valid module path. Ensure you activate module support by running export GO111MODULE=on
+  // before using the SDK.
+
+~/memcached-operator# operator-sdk init --domain example.com --repo github.com/example/memcached-operator
+Writing kustomize manifests for you to edit...
+Writing scaffold for you to edit...
+Get controller runtime:
+$ go get sigs.k8s.io/controller-runtime@v0.8.3
+go: downloading sigs.k8s.io/controller-runtime v0.8.3
+go: downloading k8s.io/client-go v0.20.2
+go: downloading k8s.io/apimachinery v0.20.2
+go: downloading github.com/prometheus/client_golang v1.7.1
+go: downloading k8s.io/component-base v0.20.2
+go: downloading gomodules.xyz/jsonpatch/v2 v2.1.0
+go: downloading k8s.io/api v0.20.2
+go: downloading k8s.io/kube-openapi v0.0.0-20201113171705-d219536bb9fd
+go: downloading github.com/prometheus/common v0.10.0
+go: downloading github.com/gogo/protobuf v1.3.1
+go: downloading k8s.io/utils v0.0.0-20210111153108-fddb29f9d009
+go: downloading github.com/go-logr/logr v0.3.0
+go: downloading gopkg.in/inf.v0 v0.9.1
+go: downloading k8s.io/apiextensions-apiserver v0.20.1
+go: downloading github.com/google/gofuzz v1.1.0
+go: downloading gopkg.in/yaml.v2 v2.3.0
+go: downloading github.com/googleapis/gnostic v0.5.1
+go: downloading github.com/prometheus/client_model v0.2.0
+go: downloading github.com/golang/protobuf v1.4.3
+go: downloading golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
+go: downloading github.com/cespare/xxhash v1.1.0
+go: downloading github.com/imdario/mergo v0.3.10
+go: downloading github.com/cespare/xxhash/v2 v2.1.1
+go: downloading github.com/fsnotify/fsnotify v1.4.9
+go: downloading github.com/google/uuid v1.1.2
+go: downloading github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
+go: downloading github.com/beorn7/perks v1.0.1
+go: downloading google.golang.org/protobuf v1.25.0
+go: downloading github.com/spf13/pflag v1.0.5
+go: downloading github.com/modern-go/reflect2 v1.0.1
+go: downloading github.com/prometheus/procfs v0.2.0
+go: downloading golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
+go: downloading sigs.k8s.io/yaml v1.2.0
+go: downloading github.com/davecgh/go-spew v1.1.1
+go: downloading sigs.k8s.io/structured-merge-diff/v4 v4.0.2
+go: downloading github.com/evanphx/json-patch v4.9.0+incompatible
+go: downloading golang.org/x/crypto v0.0.0-20201002170205-7f63de1d35b0
+go: downloading gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
+go: downloading github.com/hashicorp/golang-lru v0.5.4
+go: downloading k8s.io/klog/v2 v2.4.0
+go: downloading golang.org/x/sys v0.0.0-20201112073958-5cba982894dd
+go: downloading github.com/google/go-cmp v0.5.2
+go: downloading github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369
+go: downloading github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
+go: downloading golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
+go: downloading github.com/pkg/errors v0.9.1
+go: downloading golang.org/x/text v0.3.4
+go: downloading github.com/json-iterator/go v1.1.10
+go: downloading google.golang.org/appengine v1.6.6
+Update dependencies:
+$ go mod tidy
+go: downloading go.uber.org/zap v1.15.0
+go: downloading github.com/Azure/go-autorest v14.2.0+incompatible
+go: downloading github.com/go-logr/zapr v0.2.0
+go: downloading cloud.google.com/go v0.54.0
+go: downloading github.com/stretchr/testify v1.6.1
+go: downloading github.com/onsi/gomega v1.10.2
+go: downloading github.com/onsi/ginkgo v1.14.1
+go: downloading github.com/Azure/go-autorest/autorest v0.11.1
+go: downloading go.uber.org/multierr v1.5.0
+go: downloading go.uber.org/atomic v1.6.0
+go: downloading github.com/Azure/go-autorest/autorest/adal v0.9.5
+go: downloading gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15
+go: downloading go.uber.org/goleak v1.1.10
+go: downloading golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
+go: downloading github.com/Azure/go-autorest/logger v0.2.0
+go: downloading github.com/form3tech-oss/jwt-go v3.2.2+incompatible
+go: downloading github.com/Azure/go-autorest/autorest/mocks v0.4.1
+go: downloading honnef.co/go/tools v0.0.1-2020.1.3
+go: downloading github.com/Azure/go-autorest/autorest/date v0.3.0
+go: downloading github.com/Azure/go-autorest/tracing v0.6.0
+go: downloading github.com/kr/pretty v0.2.0
+go: downloading github.com/kr/text v0.1.0
+go: downloading golang.org/x/lint v0.0.0-20200302205851-738671d3881b
+go: downloading github.com/pmezard/go-difflib v1.0.0
+go: downloading github.com/nxadm/tail v1.4.4
+go: downloading go.uber.org/tools v0.0.0-20190618225709-2cfd321de3ee
+go: downloading golang.org/x/tools v0.0.0-20200616133436-c1934b75d054
+go: downloading gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
+go: downloading github.com/BurntSushi/toml v0.3.1
+go: downloading golang.org/x/mod v0.3.0
+Next: define a resource with:
+$ operator-sdk create api
+
+$ ~/memcached-operator# git add .
+$ ~/memcached-operator# git status
+On branch master
+
+Initial commit
+
+Changes to be committed:
+  (use "git rm --cached <file>..." to unstage)
+
+	new file:   .dockerignore
+	new file:   .gitignore
+	new file:   Dockerfile
+	new file:   Makefile
+	new file:   PROJECT
+	new file:   config/default/kustomization.yaml
+	new file:   config/default/manager_auth_proxy_patch.yaml
+	new file:   config/default/manager_config_patch.yaml
+	new file:   config/manager/controller_manager_config.yaml
+	new file:   config/manager/kustomization.yaml
+	new file:   config/manager/manager.yaml
+	new file:   config/manifests/kustomization.yaml
+	new file:   config/prometheus/kustomization.yaml
+	new file:   config/prometheus/monitor.yaml
+	new file:   config/rbac/auth_proxy_client_clusterrole.yaml
+	new file:   config/rbac/auth_proxy_role.yaml
+	new file:   config/rbac/auth_proxy_role_binding.yaml
+	new file:   config/rbac/auth_proxy_service.yaml
+	new file:   config/rbac/kustomization.yaml
+	new file:   config/rbac/leader_election_role.yaml
+	new file:   config/rbac/leader_election_role_binding.yaml
+	new file:   config/rbac/role_binding.yaml
+	new file:   config/rbac/service_account.yaml
+	new file:   config/scorecard/bases/config.yaml
+	new file:   config/scorecard/kustomization.yaml
+	new file:   config/scorecard/patches/basic.config.yaml
+	new file:   config/scorecard/patches/olm.config.yaml
+	new file:   go.mod
+	new file:   go.sum
+	new file:   hack/boilerplate.go.txt
+	new file:   main.go
+
+$ ~/memcached-operator# git commit -m "Initialize the project"
+
+$ ~/memcached-operator# tree
+.
+├── config                   # Launch Configuration: Kustomize YAML definitions required to launch controller on a cluster
+│   ├── default              # contains a Kustomize base for launching the controller in a standard configuration
+│   │   ├── kustomization.yaml
+│   │   ├── manager_auth_proxy_patch.yaml
+│   │   └── manager_config_patch.yaml
+│   ├── manager              # launch your controllers as pods in the cluster
+│   │   ├── controller_manager_config.yaml
+│   │   ├── kustomization.yaml
+│   │   └── manager.yaml
+│   ├── manifests
+│   │   └── kustomization.yaml
+│   ├── prometheus
+│   │   ├── kustomization.yaml
+│   │   └── monitor.yaml
+│   ├── rbac                 # permissions required to run your controllers under their own service account
+│   │   ├── auth_proxy_client_clusterrole.yaml
+│   │   ├── auth_proxy_role_binding.yaml
+│   │   ├── auth_proxy_role.yaml
+│   │   ├── auth_proxy_service.yaml
+│   │   ├── kustomization.yaml
+│   │   ├── leader_election_role_binding.yaml
+│   │   ├── leader_election_role.yaml
+│   │   ├── role_binding.yaml
+│   │   └── service_account.yaml
+│   └── scorecard
+│       ├── bases
+│       │   └── config.yaml
+│       ├── kustomization.yaml
+│       └── patches
+│           ├── basic.config.yaml
+│           └── olm.config.yaml
+├── Dockerfile
+├── go.mod                     # Build Infrastructure: A new Go module matching our project, with basic dependencies
+├── go.sum
+├── hack
+│   └── boilerplate.go.txt
+├── main.go                    # The Entrypoint
+├── Makefile                   # Build Infrastructure: Make targets for building and deploying your controller
+└── PROJECT                    # Build Infrastructure: Kubebuilder metadata for scaffolding new components
+
+10 directories, 29 files
+
+# Create a simple Memcached API
+operator-sdk create api --group cache --version v1alpha1 --kind Memcached --resource --controller
+  // scaffold the Memcached resource API at api/v1alpha1/memcached_types.go and the controller at controllers/memcached_controller.go
+
+~/memcached-operator# operator-sdk create api --group cache --version v1alpha1 --kind Memcached --resource --controller
+Writing kustomize manifests for you to edit...
+Writing scaffold for you to edit...
+api/v1alpha1/memcached_types.go
+controllers/memcached_controller.go
+Update dependencies:
+$ go mod tidy
+Running make:
+$ make generate
+go: creating new go.mod: module tmp
+Downloading sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1
+go: downloading sigs.k8s.io/controller-tools v0.4.1
+go: found sigs.k8s.io/controller-tools/cmd/controller-gen in sigs.k8s.io/controller-tools v0.4.1
+go: downloading github.com/spf13/cobra v1.0.0
+go: downloading k8s.io/apimachinery v0.18.2
+go: downloading k8s.io/apiextensions-apiserver v0.18.2
+go: downloading k8s.io/api v0.18.2
+go: downloading gopkg.in/yaml.v2 v2.2.8
+go: downloading github.com/gobuffalo/flect v0.2.0
+go: downloading gopkg.in/yaml.v3 v3.0.0-20190905181640-827449938966
+go: downloading github.com/fatih/color v1.7.0
+go: downloading github.com/mattn/go-colorable v0.1.2
+go: downloading github.com/inconshreveable/mousetrap v1.0.0
+go: downloading github.com/mattn/go-isatty v0.0.8
+go: downloading golang.org/x/tools v0.0.0-20200616195046-dc31b401abb5
+go: downloading k8s.io/utils v0.0.0-20200324210504-a9aa75ae1b89
+go: downloading k8s.io/klog v1.0.0
+go: downloading sigs.k8s.io/structured-merge-diff/v3 v3.0.0
+go: downloading golang.org/x/net v0.0.0-20200226121028-0de0cce0169b
+go: downloading golang.org/x/sys v0.0.0-20191022100944-742c48ecaeb7
+go: downloading github.com/json-iterator/go v1.1.8
+go: downloading golang.org/x/text v0.3.2
+go: downloading golang.org/x/mod v0.2.0
+go: downloading golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
+/root/memcached-operator/bin/controller-gen object:headerFile="hack/boilerplate.go.txt" paths="./..."
+
+$ ~/memcached-operator# git status
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git checkout -- <file>..." to discard changes in working directory)
+
+	modified:   PROJECT
+	modified:   go.mod
+	modified:   main.go
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+
+	api/
+	config/crd/
+	config/rbac/memcached_editor_role.yaml
+	config/rbac/memcached_viewer_role.yaml
+	config/samples/
+	controllers/
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+$ ~/memcached-operator# git diff PROJECT
+diff --git a/PROJECT b/PROJECT
+index 133dc0c..e54e69e 100644
+--- a/PROJECT
++++ b/PROJECT
+@@ -6,4 +6,14 @@ plugins:
+   scorecard.sdk.operatorframework.io/v2: {}
+ projectName: memcached-operator
+ repo: github.com/example/memcached-operator
++resources:
++- api:
++    crdVersion: v1
++    namespaced: true
++  controller: true
++  domain: example.com
++  group: cache
++  kind: Memcached
++  path: github.com/example/memcached-operator/api/v1alpha1
++  version: v1alpha1
+ version: "3"
+$ ~/memcached-operator# git diff go.mod
+diff --git a/go.mod b/go.mod
+index d4df9da..5f19377 100644
+--- a/go.mod
++++ b/go.mod
+@@ -3,6 +3,9 @@ module github.com/example/memcached-operator
+ go 1.15
+ 
+ require (
++       github.com/go-logr/logr v0.3.0
++       github.com/onsi/ginkgo v1.14.1
++       github.com/onsi/gomega v1.10.2
+        k8s.io/apimachinery v0.20.2
+        k8s.io/client-go v0.20.2
+        sigs.k8s.io/controller-runtime v0.8.3
+$ ~/memcached-operator# git diff main.go
+diff --git a/main.go b/main.go
+index 2c928b5..5b0a4ca 100644
+--- a/main.go
++++ b/main.go
+@@ -30,6 +30,9 @@ import (
+        ctrl "sigs.k8s.io/controller-runtime"
+        "sigs.k8s.io/controller-runtime/pkg/healthz"
+        "sigs.k8s.io/controller-runtime/pkg/log/zap"
++
++       cachev1alpha1 "github.com/example/memcached-operator/api/v1alpha1"
++       "github.com/example/memcached-operator/controllers"
+        //+kubebuilder:scaffold:imports
+ )
+ 
+@@ -41,6 +44,7 @@ var (
+ func init() {
+        utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+ 
++       utilruntime.Must(cachev1alpha1.AddToScheme(scheme))
+        //+kubebuilder:scaffold:scheme
+ }
+ 
+@@ -74,6 +78,14 @@ func main() {
+                os.Exit(1)
+        }
+ 
++       if err = (&controllers.MemcachedReconciler{
++               Client: mgr.GetClient(),
++               Log:    ctrl.Log.WithName("controllers").WithName("Memcached"),
++               Scheme: mgr.GetScheme(),
++       }).SetupWithManager(mgr); err != nil {
++               setupLog.Error(err, "unable to create controller", "controller", "Memcached")
++               os.Exit(1)
++       }
+        //+kubebuilder:scaffold:builder
+ 
+        if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+
+$ ~/memcached-operator# git add .
+$ ~/memcached-operator# git commit -m "Create the API"
+
+$ ~/memcached-operator# tree
+.
+├── api
+│   └── v1alpha1
+│       ├── groupversion_info.go       # contains common metadata about the group-version
+│       ├── memcached_types.go         # API design
+│       └── zz_generated.deepcopy.go   # contains the autogenerated implementation of the runtime.Object interface
+├── bin
+│   └── controller-gen
+├── config
+│   ├── crd
+│   │   ├── kustomization.yaml
+│   │   ├── kustomizeconfig.yaml
+│   │   └── patches
+│   │       ├── cainjection_in_memcacheds.yaml
+│   │       └── webhook_in_memcacheds.yaml
+│   ├── default
+│   │   ├── kustomization.yaml
+│   │   ├── manager_auth_proxy_patch.yaml
+│   │   └── manager_config_patch.yaml
+│   ├── manager
+│   │   ├── controller_manager_config.yaml
+│   │   ├── kustomization.yaml
+│   │   └── manager.yaml
+│   ├── manifests
+│   │   └── kustomization.yaml
+│   ├── prometheus
+│   │   ├── kustomization.yaml
+│   │   └── monitor.yaml
+│   ├── rbac
+│   │   ├── auth_proxy_client_clusterrole.yaml
+│   │   ├── auth_proxy_role_binding.yaml
+│   │   ├── auth_proxy_role.yaml
+│   │   ├── auth_proxy_service.yaml
+│   │   ├── kustomization.yaml
+│   │   ├── leader_election_role_binding.yaml
+│   │   ├── leader_election_role.yaml
+│   │   ├── memcached_editor_role.yaml
+│   │   ├── memcached_viewer_role.yaml
+│   │   ├── role_binding.yaml
+│   │   └── service_account.yaml
+│   ├── samples
+│   │   ├── cache_v1alpha1_memcached.yaml
+│   │   └── kustomization.yaml
+│   └── scorecard
+│       ├── bases
+│       │   └── config.yaml
+│       ├── kustomization.yaml
+│       └── patches
+│           ├── basic.config.yaml
+│           └── olm.config.yaml
+├── controllers                          # ensure that the actual state of the world matches the desired state for any object
+│   ├── memcached_controller.go
+│   └── suite_test.go
+├── Dockerfile
+├── go.mod
+├── go.sum
+├── hack
+│   └── boilerplate.go.txt
+├── main.go
+├── Makefile
+└── PROJECT
+
+17 directories, 43 files
+
+# Build and push your operator’s image
+make docker-build docker-push IMG="example.com/memcached-operator:v0.0.1"
+
+$ ~/memcached-operator# make docker-build IMG="example.com/memcached-operator:v0.0.1"
+/root/memcached-operator/bin/controller-gen "crd:trivialVersions=true,preserveUnknownFields=false" rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+/root/memcached-operator/bin/controller-gen object:headerFile="hack/boilerplate.go.txt" paths="./..."
+go fmt ./...
+go vet ./...
+mkdir -p /root/memcached-operator/testbin
+test -f /root/memcached-operator/testbin/setup-envtest.sh || curl -sSLo /root/memcached-operator/testbin/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.8.3/hack/setup-envtest.sh
+source /root/memcached-operator/testbin/setup-envtest.sh; fetch_envtest_tools /root/memcached-operator/testbin; setup_envtest_env /root/memcached-operator/testbin; go test ./... -coverprofile cover.out
+fetching envtest tools@1.19.2 (into '/root/memcached-operator/testbin')
+kubebuilder/bin/
+kubebuilder/bin/etcd
+kubebuilder/bin/kubectl
+kubebuilder/bin/kube-apiserver
+setting up env vars
+?   	github.com/example/memcached-operator	[no test files]
+?   	github.com/example/memcached-operator/api/v1alpha1	[no test files]
+ok  	github.com/example/memcached-operator/controllers	8.518s	coverage: 0.0% of statements
+docker build -t example.com/memcached-operator:v0.0.1 .
+Sending build context to Docker daemon  203.6MB
+Step 1/14 : FROM golang:1.15 as builder
+1.15: Pulling from library/golang
+d960726af2be: Pull complete 
+e8d62473a22d: Pull complete 
+8962bc0fad55: Pull complete 
+65d943ee54c1: Pull complete 
+f2253e6fbefa: Pull complete 
+56b33a43941e: Pull complete 
+bf43b7043f50: Pull complete 
+Digest: sha256:b77e77539fea94e3f90f54fb19c6b20e8de4d80ea980a3bdfbcfadf89c9ff540
+Status: Downloaded newer image for golang:1.15
+ ---> e5b4455acc93
+Step 2/14 : WORKDIR /workspace
+ ---> Running in d74b20b4b43b
+Removing intermediate container d74b20b4b43b
+ ---> 3103e8e2cac2
+Step 3/14 : COPY go.mod go.mod
+ ---> 0097c8890a5f
+Step 4/14 : COPY go.sum go.sum
+ ---> 3e0b9e15152e
+Step 5/14 : RUN go mod download
+ ---> Running in 32c3d4b9fd0e
+Removing intermediate container 32c3d4b9fd0e
+ ---> d63a9c389ae8
+Step 6/14 : COPY main.go main.go
+ ---> b5a0880c641c
+Step 7/14 : COPY api/ api/
+ ---> 3c1f36c30dc4
+Step 8/14 : COPY controllers/ controllers/
+ ---> d39a5c97f071
+Step 9/14 : RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -a -o manager main.go
+ ---> Running in 9ad9956e467f
+Removing intermediate container 9ad9956e467f
+ ---> 998896186406
+Step 10/14 : FROM gcr.io/distroless/static:nonroot
+nonroot: Pulling from distroless/static
+5dea5ec2316d: Pull complete 
+Digest: sha256:cd784033c94dd30546456f35de8e128390ae15c48cbee5eb7e3306857ec17631
+Status: Downloaded newer image for gcr.io/distroless/static:nonroot
+ ---> fb7b4da47366
+Step 11/14 : WORKDIR /
+ ---> Running in 545b69642024
+Removing intermediate container 545b69642024
+ ---> ef62734dd704
+Step 12/14 : COPY --from=builder /workspace/manager .
+ ---> aaf444f707be
+Step 13/14 : USER 65532:65532
+ ---> Running in 76ca3d3d030e
+Removing intermediate container 76ca3d3d030e
+ ---> 880cce24b553
+Step 14/14 : ENTRYPOINT ["/manager"]
+ ---> Running in 373dfe0b959a
+Removing intermediate container 373dfe0b959a
+ ---> 792f7b2093f8
+Successfully built 792f7b2093f8
+Successfully tagged example.com/memcached-operator:v0.0.1
+
+$ ~/memcached-operator# git status
+On branch master
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+
+	config/crd/bases/
+	config/rbac/role.yaml
+$ ~/memcached-operator# git add .
+$ ~/memcached-operator# git status
+On branch master
+Changes to be committed:
+  (use "git reset HEAD <file>..." to unstage)
+
+	new file:   config/crd/bases/cache.example.com_memcacheds.yaml
+	new file:   config/rbac/role.yaml
+
+$ ~/memcached-operator# git commit -m "Build the container"
+
+$ ~/memcached-operator# tree
+.
+├── api
+│   └── v1alpha1
+│       ├── groupversion_info.go
+│       ├── memcached_types.go
+│       └── zz_generated.deepcopy.go
+├── bin
+│   └── controller-gen
+├── config
+│   ├── crd
+│   │   ├── bases
+│   │   │   └── cache.example.com_memcacheds.yaml
+│   │   ├── kustomization.yaml
+│   │   ├── kustomizeconfig.yaml
+│   │   └── patches
+│   │       ├── cainjection_in_memcacheds.yaml
+│   │       └── webhook_in_memcacheds.yaml
+│   ├── default
+│   │   ├── kustomization.yaml
+│   │   ├── manager_auth_proxy_patch.yaml
+│   │   └── manager_config_patch.yaml
+│   ├── manager
+│   │   ├── controller_manager_config.yaml
+│   │   ├── kustomization.yaml
+│   │   └── manager.yaml
+│   ├── manifests
+│   │   └── kustomization.yaml
+│   ├── prometheus
+│   │   ├── kustomization.yaml
+│   │   └── monitor.yaml
+│   ├── rbac
+│   │   ├── auth_proxy_client_clusterrole.yaml
+│   │   ├── auth_proxy_role_binding.yaml
+│   │   ├── auth_proxy_role.yaml
+│   │   ├── auth_proxy_service.yaml
+│   │   ├── kustomization.yaml
+│   │   ├── leader_election_role_binding.yaml
+│   │   ├── leader_election_role.yaml
+│   │   ├── memcached_editor_role.yaml
+│   │   ├── memcached_viewer_role.yaml
+│   │   ├── role_binding.yaml
+│   │   ├── role.yaml
+│   │   └── service_account.yaml
+│   ├── samples
+│   │   ├── cache_v1alpha1_memcached.yaml
+│   │   └── kustomization.yaml
+│   └── scorecard
+│       ├── bases
+│       │   └── config.yaml
+│       ├── kustomization.yaml
+│       └── patches
+│           ├── basic.config.yaml
+│           └── olm.config.yaml
+├── controllers
+│   ├── memcached_controller.go
+│   └── suite_test.go
+├── cover.out
+├── Dockerfile
+├── go.mod
+├── go.sum
+├── hack
+│   └── boilerplate.go.txt
+├── main.go
+├── Makefile
+├── PROJECT
+└── testbin
+    ├── bin
+    │   ├── etcd
+    │   ├── kube-apiserver
+    │   └── kubectl
+    └── setup-envtest.sh
+
+20 directories, 50 files
+
+$ ~/memcached-operator# docker run -it --rm example.com/memcached-operator:v0.0.1 
+2021-05-20T16:16:47.751Z	ERROR	controller-runtime.client.config	unable to get kubeconfig	{"error": "invalid configuration: no configuration has been provided, try setting KUBERNETES_MASTER environment variable", "errorCauses": [{"error": "no configuration has been provided, try setting KUBERNETES_MASTER environment variable"}]}
+github.com/go-logr/zapr.(*zapLogger).Error
+	/go/pkg/mod/github.com/go-logr/zapr@v0.2.0/zapr.go:132
+sigs.k8s.io/controller-runtime/pkg/log.(*DelegatingLogger).Error
+	/go/pkg/mod/sigs.k8s.io/controller-runtime@v0.8.3/pkg/log/deleg.go:144
+sigs.k8s.io/controller-runtime/pkg/client/config.GetConfigOrDie
+	/go/pkg/mod/sigs.k8s.io/controller-runtime@v0.8.3/pkg/client/config/config.go:154
+main.main
+	/workspace/main.go:68
+runtime.main
+	/usr/local/go/src/runtime/proc.go:204
+
+# Deploy your operator
+make deploy IMG="example.com/memcached-operator:v0.0.1"
+
+# Create a sample Memcached custom resource
+kubectl apply -f config/samples/cache_v1alpha1_memcached.yaml
+
+# Uninstall the operator
+make undeploy
+
+==== https://sdk.operatorframework.io/docs/building-operators/golang/tutorial/
+
+# Define the API
+$ ~/memcached-operator# git status
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git checkout -- <file>..." to discard changes in working directory)
+
+	modified:   api/v1alpha1/memcached_types.go
+
+no changes added to commit (use "git add" and/or "git commit -a")
+$ ~/memcached-operator# git diff
+diff --git a/api/v1alpha1/memcached_types.go b/api/v1alpha1/memcached_types.go
+index ec37f9f..95d67b9 100644
+--- a/api/v1alpha1/memcached_types.go
++++ b/api/v1alpha1/memcached_types.go
+@@ -25,23 +25,22 @@ import (
+ 
+ // MemcachedSpec defines the desired state of Memcached
+ type MemcachedSpec struct {
+-       // INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+-       // Important: Run "make" to regenerate code after modifying this file
+-
+-       // Foo is an example field of Memcached. Edit memcached_types.go to remove/update
+-       Foo string `json:"foo,omitempty"`
++       //+kubebuilder:validation:Minimum=0
++       // Size is the size of the memcached deployment
++       Size int32 `json:"size"`
+ }
+ 
+ // MemcachedStatus defines the observed state of Memcached
+ type MemcachedStatus struct {
+-       // INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
+-       // Important: Run "make" to regenerate code after modifying this file
++       // Nodes are the names of the memcached pods
++       Nodes []string `json:"nodes"`
+ }
+ 
+ //+kubebuilder:object:root=true
+ //+kubebuilder:subresource:status
+ 
+ // Memcached is the Schema for the memcacheds API
++//+kubebuilder:subresource:status
+ type Memcached struct {
+        metav1.TypeMeta   `json:",inline"`
+        metav1.ObjectMeta `json:"metadata,omitempty"`
+$ ~/memcached-operator# git add api/v1alpha1/memcached_types.go
+$ ~/memcached-operator# git commit -m "Define the API"
+
+$ ~/memcached-operator# make generate
+/root/memcached-operator/bin/controller-gen object:headerFile="hack/boilerplate.go.txt" paths="./..."
+root@scspa2260223001:~/memcached-operator# git status
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git checkout -- <file>..." to discard changes in working directory)
+
+	modified:   api/v1alpha1/zz_generated.deepcopy.go
+
+no changes added to commit (use "git add" and/or "git commit -a")
+$ ~/memcached-operator# git diff
+diff --git a/api/v1alpha1/zz_generated.deepcopy.go b/api/v1alpha1/zz_generated.deepcopy.go
+index 7730cf5..06a3fb0 100644
+--- a/api/v1alpha1/zz_generated.deepcopy.go
++++ b/api/v1alpha1/zz_generated.deepcopy.go
+@@ -30,7 +30,7 @@ func (in *Memcached) DeepCopyInto(out *Memcached) {
+        out.TypeMeta = in.TypeMeta
+        in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+        out.Spec = in.Spec
+-       out.Status = in.Status
++       in.Status.DeepCopyInto(&out.Status)
+ }
+ 
+ // DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new Memcached.
+@@ -101,6 +101,11 @@ func (in *MemcachedSpec) DeepCopy() *MemcachedSpec {
+ // DeepCopyInto is an autogenerated deepcopy function, copying the receiver, writing into out. in must be non-nil.
+ func (in *MemcachedStatus) DeepCopyInto(out *MemcachedStatus) {
+        *out = *in
++       if in.Nodes != nil {
++               in, out := &in.Nodes, &out.Nodes
++               *out = make([]string, len(*in))
++               copy(*out, *in)
++       }
+ }
+ 
+ // DeepCopy is an autogenerated deepcopy function, copying the receiver, creating a new MemcachedStatus.
+
+$ ~/memcached-operator# git add api/v1alpha1/zz_generated.deepcopy.go
+$ ~/memcached-operator# git commit -m "make generate"
+
+$ ~/memcached-operator# make manifests
+/root/memcached-operator/bin/controller-gen "crd:trivialVersions=true,preserveUnknownFields=false" rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+$ ~/memcached-operator# git status
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git checkout -- <file>..." to discard changes in working directory)
+
+	modified:   config/crd/bases/cache.example.com_memcacheds.yaml
+
+no changes added to commit (use "git add" and/or "git commit -a")
+$ ~/memcached-operator# git diff
+diff --git a/config/crd/bases/cache.example.com_memcacheds.yaml b/config/crd/bases/cache.example.com_memcacheds.yaml
+index bd73250..d210410 100644
+--- a/config/crd/bases/cache.example.com_memcacheds.yaml
++++ b/config/crd/bases/cache.example.com_memcacheds.yaml
+@@ -36,13 +36,24 @@ spec:
+           spec:
+             description: MemcachedSpec defines the desired state of Memcached
+             properties:
+-              foo:
+-                description: Foo is an example field of Memcached. Edit memcached_types.go
+-                  to remove/update
+-                type: string
++              size:
++                description: Size is the size of the memcached deployment
++                format: int32
++                minimum: 0
++                type: integer
++            required:
++            - size
+             type: object
+           status:
+             description: MemcachedStatus defines the observed state of Memcached
++            properties:
++              nodes:
++                description: Nodes are the names of the memcached pods
++                items:
++                  type: string
++                type: array
++            required:
++            - nodes
+             type: object
+         type: object
+     served: true
+
+$ ~/memcached-operator# git add config/crd/bases/cache.example.com_memcacheds.yaml
+$ ~/memcached-operator# git commit -m "make manifests"
+
+$  vim controllers/memcached_controller.go     # Implement the controller
+
+$ ~/memcached-operator# git add .
+$ ~/memcached-operator# git commit -m "Implement the controller"
+
+$ ~/memcached-operator# make manifests
+/root/memcached-operator/bin/controller-gen "crd:trivialVersions=true,preserveUnknownFields=false" rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+
+$ ~/memcached-operator# git status
+On branch master
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git checkout -- <file>..." to discard changes in working directory)
+
+	modified:   config/rbac/role.yaml
+	modified:   go.mod
+
+no changes added to commit (use "git add" and/or "git commit -a")
+
+$ ~/memcached-operator# git add .
+$ ~/memcached-operator# git commit -m "Make manifests"
+
+
+
+==== Groups and Versions and Kinds
+
+An API Group in Kubernetes is simply a collection of related functionality.
+Each group has one or more versions, which allow us to change how an API works over time.
+Each API group-version contains one or more API types, which we call Kinds.
+While a Kind may change forms between versions, each form must be able to store all the data of the other forms,
+  somehow (we can store the data in fields, or in annotations). This means that using an older API version won’t
+  cause newer data to be lost or corrupted.
+A resource is simply a use of a Kind in the API.
+
+==== Kubernetes API guidelines
+
+https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md
+
+
+
